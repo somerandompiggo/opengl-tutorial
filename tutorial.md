@@ -20,6 +20,8 @@ Vulkan is good in the right hands, but more of a GPU API than a graphics API. Ov
 ## What OpenGL is and what it isn't
 OpenGL, being a low level library doesn't do anything in the way of game logic, window management, sound, even perspective 3D rendering and other transformations. **OpenGL's sole purpose is to take geometry from you, the programmer and turn it into pixels on the screen.**
 
+The way OpenGL does this is via a process called rasterization. A specialized part of your GPU known as the rasterizer acts the same as those connect-the-dots puzzles you might have done as a kid. A series of points (vertices) is given, the area inside of the shape is identified and then colored in. In OpenGL, the vertex positions are defined by the vertex shader and the pixel colors are defined by the fragment shader. Fragment is mostly interchangeable with pixel. In DirectX, another graphics API they are just called pixel shaders.
+
 > "But if it doesn't manage windows or anything else, how do we even use it?"
 
 You could use your operating system's native APIs such as Win32 but if your end goal isn't to write [a 4kb demo](https://youtube.com/watch?v=jB0vBmiTr6o) you probably don't want that!
@@ -98,6 +100,7 @@ In the project folder, create a file named **main.c** and copy this into it
 ```c
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stdio.h>
 
 int main() {
     glfwInit();
@@ -105,7 +108,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(1280, 720, "Window", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Window", NULL, NULL);
     if (window == NULL) {
         printf("Failed to create GLFW window\n");
         glfwTerminate();
@@ -148,7 +151,7 @@ Using the compiler directly:
 `gcc main.c glad.c -Iinclude -lglfw -lm -o main`
 2. Profit?
 
-Either if successful should create an executable named `main`. Run it. You might briefly see a window appear. This is because we create a window, but immediately close it afterwards. If there are no errors printed, you should be good to go.
+Either if successful should create an executable named `main`. Run it. You might briefly see a window appear. This is because we create a window, but immediately terminate GLFW afterwards, therefore destroying the window. If there are no errors printed, you should be good to go.
 
 ### Keeping a window open
 Let's break down the test code from before.
@@ -159,6 +162,7 @@ Here is the code again explaining everything in comments
 // It is important to include GLAD and then GLFW, not the other way around. You can bypass this restriction however by using the flag `#define GLFW_INCLUDE_NONE`. This might become helpful in larger projects with lots of files.
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stdio.h>
 
 int main() {
     glfwInit(); // Initialize the GLFW library so we can use it
@@ -166,7 +170,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); // We want OpenGL version 3.3. 3.X is defined here
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Use the core profile, we don't need the legacy functions from compatability.
 
-    window = glfwCreateWindow(1280, 720, "Window", NULL, NULL); // Create a window. Window width of 1280 pixels, window height of 720 pixels, window title. You can ignore the last 2 arguments, refer to the GLFW docs if you need them
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Window", NULL, NULL); // Create a window. Window width of 1280 pixels, window height of 720 pixels, window title. You can ignore the last 2 arguments, refer to the GLFW docs if you need them
     if (window == NULL) { // If the function returned NULL, it wasn't successful. Throw an error and quit
         printf("Failed to create GLFW window\n");
         glfwTerminate();
@@ -183,8 +187,8 @@ int main() {
 }
 ```
 
-To keep the window open, it's not a good idea to do something in the meantime (such as sleep()ing) and ignore the window. Instead, we need a draw loop. This draws every frame and handles inputs.
-After the function pointers are loaded, add this while loop
+To keep the window open, it's not a good idea to do something in the meantime (such as sleep()ing) and ignore the window. If the OS sees a window that is not looking for inputs regularly, it will assume that the program is not responding. Instead, we need a draw loop. This draws every frame and handles inputs.
+After the function pointers are loaded, add this while loop:
 
 ```c
 while (!glfwWindowShouldClose(window)) { // While the window should not close (user isn't trying to close the window), do this
@@ -195,9 +199,9 @@ while (!glfwWindowShouldClose(window)) { // While the window should not close (u
 
 Compile the program again and run it. Now you should see either a black window or a seizure-inducing mess. If it's the latter, first, sorry and also that means your graphics driver doesn't initialize VRAM before giving it to the user. You might see fragments of recently running programs in there, even textures from other 3D applications. Either way, we should clear the buffer before displaying it.
 
-Before swapping the buffers we set the color GL should clear with as `glClearColor(1.0, 1.0, 0.0, 1.0);`. These are RGBA values, but like the normalized device coordinates, these aren't what you're most likely used to. Instead of going from 0-255, each channel goes from 0-1, but floating point so we can have a decimal point instead of an 8-bit integer. On most displays, this value will be converted to 0-255 anyway. We still haven't cleared the window yet though, let's run `glClear(GL_COLOR_BUFFER_BIT);` afterwards. You might be wondering what the argument is, that's because glClear can clear framebuffers other than the regular color one. We will use the depth buffer later on for 3D rendering.
+Before swapping the buffers we set the color GL should clear with as `glClearColor(0.25, 0.25, 0.25, 1.0);`. These are RGBA values, but like the normalized device coordinates, these aren't what you're most likely used to. Instead of going from 0-255, each channel goes from 0-1, but floating point so we can have a decimal point instead of an 8-bit integer. On most displays, this value will be converted to 0-255 anyway. We still haven't cleared the window yet though, let's run `glClear(GL_COLOR_BUFFER_BIT);` afterwards. You might be wondering what the argument is, that's because glClear can clear framebuffers other than the regular color one. We will use the depth buffer later on for 3D rendering.
 
-When compiling & running the resulting code, you should see a bright yellow window. If you don't, here's what the while loop should look like at this point:
+When compiling & running the resulting code, you should see a boring grey window. If you don't, here's what the while loop should look like at this point:
 
 ```c
 while (!glfwWindowShouldClose(window)) {
@@ -216,7 +220,13 @@ With everything that we have learned, it's finally time to put it to use.
 #### Loading geometry
 Of course, to render a triangle we need the vertices for a triangle.
 
-
+```c
+float triverts[] = {
+    -0.5f, -0.5f, 0.0f,
+    0.5f, -0.5f, 0.0f,
+    0.0f,  0.5f, 0.0f
+};
+```
 
 We will create a VRAM buffer for the triangle vertices and a VAO (before the main loop):
 ```c
@@ -231,7 +241,7 @@ glBindVertexArray(triVAO);
 ```
 Load the vertex data:
 ```c
-glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), vertices, GL_STATIC_DRAW);
+glBufferData(GL_ARRAY_BUFFER, sizeof(triverts), triverts, GL_STATIC_DRAW);
 ```
 Now, for each piece of data in the VBO, we need to tell the VAO so GL knows what to give the shaders.
 ```c
@@ -256,6 +266,168 @@ Here is a diagram:
 We then enable this new vertex attribute with `glEnableVertexAttribArray`.
 
 #### Shaders
-OpenGL shaders are written in a language similar to C called GLSL. There are two types, the vertex shader and the fragment shader. Vertex shaders run for every vertex, fragment shaders run for every pixel. Most commonly, vertex shaders translate the model's vertices, and the fragment shader calculates lighting per pixel.
+OpenGL shaders are written in a language similar to C called GLSL. Although it is similar, some features are missing. You cannot allocate memory at runtime, there is no logging function (eg: printf()). There are two types, the vertex shader and the fragment shader. Vertex shaders run for every vertex, fragment shaders run for every pixel. Most commonly, vertex shaders translate the model's vertices, and the fragment shader calculates lighting per pixel.
 
-For the vertex shader, we will take the data from the VBO we made earlier.
+For the vertex shader, we will take the data from the VBO we made earlier. Create a file named `shader.vs` with these contents:
+```glsl
+#version 330 core // Define the GLSL version as 330, looks similar to 3.3 right? We are using the core profile so we put that too
+
+layout (location = 0) in vec3 vPos; // Get the vertex position from the VBO with the index of 0 (currently the only one)
+
+void main() { // Main function just like in C, but in GLSL main functions don't return a value
+    gl_Position = vec4(vPos, 1.0); // Convert the (x, y, z) to (x, y, z, w). This vec4 version is called a homogenous coordinate. I will explain why they are useful later!
+}
+```
+
+In this shader that runs 3 times in our case (once for each vertex) we will simply send the same position as was specified in the VBO to the rasterizer as the gl_Position variable. Later on, this shader is where the perspective calculations that make 3D possible will happen.
+
+Next comes the fragment shader. It looks a bit different, but mostly the same.
+
+```glsl
+#version 330 core
+
+// Later on we can get data from the vertex shader from here, which comes before the fragment shader.
+
+out vec4 fragColor; // RGBA in the same format as glClearColor(). 0.0 to 1.0, with 0.0 being the darkest and 1.0 being the brightest (low dynamic range). HDR or high dynamic range does not have this limit
+
+void main() {
+    fragColor = vec4(0.19, 1.0, 0.66, 1.0); // A turquoise-like color
+}
+```
+
+This fragment shader makes every pixel inside of the geometry's bounds turquoise
+
+OpenGL compiles both the vertex and fragment shader into a "shader program" which is used when drawing. First, we have to compile both shaders individually, then we link them to make a shader program.
+Well this is nice and all but we still don't have a way to load the shaders from a file into our program. Thanks to the standard C library, this is quite easy. Let's create a struct to hold information about our shader.
+
+```c
+struct ShaderProgram {
+    int id; // Object ID for the shader program
+};
+```
+
+It would make a bit more sense if the struct had more than one member, but oh well.
+
+Now we need some functions to use this struct, sorry about this block being massive:
+```c
+#include <stdlib.h> // We need a new header for malloc()!
+
+int programFromShaderPaths(struct ShaderProgram* ptr, const char* v_shader_path, const char* f_shader_path) {
+    // Error handling definitions
+    int success; // 0 = fail, 1 = success
+    char infoLog[4096]; // Log for the compiler & linker so we can see if something goes wrong
+
+    // Check for the shader program pointer being NULL to avoid a segfault
+    if (ptr == NULL) {
+        printf("null ptr given\n");
+        return 1;
+    }
+
+    // Load & compile vertex shader
+    FILE* fp = fopen(v_shader_path, "r"); // Use fopen to read ("r") the vertex shader file
+    if (fp == NULL) { // if the file could not be opened
+        printf("Could not open the vertex shader file with path '%s'\n", v_shader_path);
+        return 1;
+    }
+    fseek(fp, 0L, SEEK_END); // Seek (reading offset) to the end of the file
+    size_t sz = ftell(fp); // Get the offset from the beginning of the file. Because we are at the end of the file this is the file size in bytes
+    rewind(fp); // Move the offset back to the beginning of the file so we can read it
+    char* v_shader_src = malloc(sz+1); // Allocate enough memory to store the file and the terminating null byte
+    v_shader_src[sz] = '\0'; // set the last byte to null so that C knows where the end of the string is
+    if (v_shader_src == NULL) { // if malloc failed to get the memory
+        printf("failed to allocate memory!\n");
+        return 1; // Exit code for failure
+    }
+    fread(v_shader_src, sz, 1, fp);
+    fclose(fp); // Close the file handle, we no longer need it
+    unsigned int v_shader_obj = glCreateShader(GL_VERTEX_SHADER); // Create the vertex shader's GL object
+    glShaderSource(v_shader_obj, 1, (char const* const*)&v_shader_src, NULL);
+    glCompileShader(v_shader_obj);
+    glGetShaderiv(v_shader_obj, GL_COMPILE_STATUS, &success); // Was it successful?
+    if (!success) { // If we weren't...
+        glGetShaderInfoLog(v_shader_obj, 4096, NULL, infoLog); // Get the compiler log
+        printf("Vertex shader compilation failed: \n%s\n", infoLog); // Print it
+        return 1;
+    } // Just continue otherwise, no reason to get the log
+
+    // Load & compile fragment shader
+    fp = fopen(f_shader_path, "r"); // Use fopen to read ("r") the vertex shader file
+    if (fp == NULL) { // if the file could not be opened
+        printf("Could not open the fragment shader file with path '%s'\n", f_shader_path);
+        return 1;
+    }
+    fseek(fp, 0L, SEEK_END); // Seek (reading offset) to the end of the file
+    sz = ftell(fp); // Get the offset from the beginning of the file. Because we are at the end of the file this is the file size in bytes
+    rewind(fp); // Move the offset back to the beginning of the file so we can read it
+    char* f_shader_src = malloc(sz+1); // Allocate enough memory to store the file and the terminating null byte
+    f_shader_src[sz] = '\0'; // set the last byte to null so that C knows where the end of the string is
+    if (f_shader_src == NULL) { // if malloc failed to get the memory
+        printf("failed to allocate memory!\n");
+        return 1; // Exit code for failure
+    }
+    fread(f_shader_src, sz, 1, fp); // Read the file contents into the buffer malloc made
+    unsigned int f_shader_obj = glCreateShader(GL_FRAGMENT_SHADER); // Create the fragment shader's GL object
+    glShaderSource(f_shader_obj, 1, (char const* const*)&f_shader_src, NULL); // Load the source from the file into it
+    glCompileShader(f_shader_obj); // Compile the shader
+    glGetShaderiv(f_shader_obj, GL_COMPILE_STATUS, &success); // Was it successful?
+    if (!success) { // If we weren't...
+        glGetShaderInfoLog(f_shader_obj, 4096, NULL, infoLog); // Get the compiler log
+        printf("Fragment shader compilation failed: \n%s\n", infoLog); // Print it
+        return 1;
+    } // Just continue otherwise, no reason to get the log
+
+    // Create and link the shader program
+    unsigned int shaderProgram = glCreateProgram(); // Create the shader program object
+    glAttachShader(shaderProgram, v_shader_obj); // Attach the vertex shader to this program
+    glAttachShader(shaderProgram, f_shader_obj); // Attach the fragment shader to this program
+    glLinkProgram(shaderProgram); // Link the two compiled shaders into one program
+    glGetShaderiv(f_shader_obj, GL_COMPILE_STATUS, &success); // Was it successful?
+    if (!success) { // It was not...
+        glGetShaderInfoLog(f_shader_obj, 4096, NULL, infoLog); // Get the linker log
+        printf("Shader program linking failed: \n%s\n", infoLog);
+        return 1;
+    } // It was!
+    ptr->id = shaderProgram;
+    
+    // Cleanup before exiting
+    glDeleteShader(v_shader_obj);
+    glDeleteShader(f_shader_obj);
+    free(v_shader_src);
+    free(f_shader_src);
+
+    return 0; // Exit code for success
+}
+void useShader(struct ShaderProgram* ptr) {
+    glUseProgram(ptr->id);
+}
+```
+
+Now that we have a way to load & compile shaders, let's implement it. After loading the geometry:
+
+```c
+struct ShaderProgram shader;
+if (programFromShaderPaths(&shader, "./shader.vs", "./shader.fs")) {
+    printf("Failed to load shader!\n");
+    return 1;
+}
+```
+
+#### Finishing up
+
+As I'm sure you'll be glad to hear, we are now finally ready to draw our first triangle (hopefully first of many) to the window.
+
+In the drawing loop between the clear and buffer flip/poll for input functions we first need to bind to the mesh VAO.
+```c
+glBindVertexArray(triVAO);
+```
+Then, we use the shader:
+```c
+useShader(&shader);
+```
+and draw!
+```c
+glDrawArrays(GL_TRIANGLES, 0, 3);
+```
+If you were paying close attention, you might have realized that we didn't bind to the VBO. This is because the VAO is implicitly attached to the VBO, and binds it automatically.
+
+Rerun the program, and you should see a turquoise triangle. There are many opportunities to go wrong here, so don't feel too bad if it doesn't work first try.
