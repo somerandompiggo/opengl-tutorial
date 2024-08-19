@@ -3,12 +3,21 @@
 
 ## Progress
 Setup:
+
 	Windows: ❎; MacOS: ❎; Linux: ✅;
+
 Hello Triangle: ✅
+
 Perspective 3D: ❎
+
 Textures: ❎
+
 Loading models: ❎
+
 Lighting (Blinn-Phong): ❎
+
 Scene graph: ❎
+
 Cubemaps: ❎
+
 HDR+Bloom: ❎
